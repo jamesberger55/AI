@@ -42,89 +42,79 @@ def getPairNumFromPositions(player,card):
     return player*len(cards) + card + 1
 
 # TO BE IMPLEMENTED AS AN EXERCISE
-def initialClauses(persons, weapons, rooms):
+def initialClauses():
     clauses = []
-    
-    # Person clause
-    for person in persons:
-        clause = [(-1 * person,)]
-        for other_person in persons:
-            if person != other_person:
-                clause.append((other_person,))
+
+    # Each card is in at least one place (including case file).
+    for c in cards:
+        clauses.append([getPairNumFromNames(p,c) for p in extendedPlayers])
+
+    # A card cannot be in two places.
+    for person1 in extendedPlayers:
+        for person2 in extendedPlayers:
+            if person1 != person2:
+                for c in cards:
+                    clauses.append([-1 * getPairNumFromNames(person1, c), -1 * getPairNumFromNames(person2, c)])
+
+
+    # At least one card of each category is in the case file.
+    for category in [suspects, weapons, rooms]:
+        clause = [getPairNumFromNames(caseFile, c) for c in category]
         clauses.append(clause)
-    
-    # Weapon clause
-    for weapon in weapons:
-        clause = [(-1 * weapon,)]
-        for other_weapon in weapons:
-            if weapon != other_weapon:
-                clause.append((other_weapon,))
-        clauses.append(clause)
-    
-    # Room clause
-    for room in rooms:
-        clause = [(-1 * room,)]
-        for other_room in rooms:
-            if room != other_room:
-                clause.append((other_room,))
-        clauses.append(clause)
-    
+
+    # No two cards in each category can both be in the case file.
+    for category in [suspects, weapons, rooms]:
+        for i in range(len(category)):
+            for j in range(i + 1, len(category)):
+                clauses.append([-1 * getPairNumFromNames(caseFile, category[i]), -1 * getPairNumFromNames(caseFile, category[j])])
+
+# TO BE IMPLEMENTED AS AN EXERCISE  
+def hand(player, player_cards):
+    clauses = []
+    for c in player_cards:
+        clauses.append(getPairNumFromNames(player, c))
     return clauses
 
 # TO BE IMPLEMENTED AS AN EXERCISE  
-def hand(self, player, cards):
-    """
-    Update the cards in the hand of a player.
-    """
-    self.players[player] = cards
+def suggest(suggester,card1,card2,card3,refuter,cardShown):
+    suggesterIndex = players.index(suggester)
+    clauses = []
+    for i in range(len(players)):
+        playerIndex = (suggesterIndex + i) % len(players)
+        player = players[playerIndex]
+        if player == refuter:
+            # Add clause for refuter
+            clauses.append([-getPairNumFromNames(caseFile, card) for card in [card1, card2, card3]] + [getPairNumFromNames(caseFile, cardShown)])
+            break
+        elif player != suggester:
+            # Add clause for players who couldn't refute the suggestion
+            clauses.append([-getPairNumFromNames(caseFile, card) for card in [card1, card2, card3]])
+    # Add clause for players who don't have any of the suggested cards
+    if refuter is None:
+        for player in players:
+            if player != suggester:
+                clauses.append([-getPairNumFromNames(caseFile, card) for card in [card1, card2, card3]])
+    return clauses
 
-# TO BE IMPLEMENTED AS AN EXERCISE  
-def suggest(suspects, weapons, rooms, seen, accuser, room):
-    possibilities = []
-    for suspect in suspects:
-        if suspect not in seen:
-            possibilities.append(suspect)
-    for weapon in weapons:
-        if weapon not in seen:
-            possibilities.append(weapon)
-    for item in rooms:
-        if item not in seen:
-            possibilities.append(item)
 
-    suggestion = None
-    if accuser == room:
-        for possibility in possibilities:
-            if possibility in suspects:
-                suggestion = possibility
-                break
-        if not suggestion:
-            suggestion = possibilities[0]
-    else:
-        for possibility in possibilities:
-            if possibility in weapons:
-                suggestion = possibility
-                break
-        if not suggestion:
-            for possibility in possibilities:
-                if possibility in rooms:
-                    suggestion = possibility
-                    break
-        if not suggestion:
-            suggestion = possibilities[0]
-
-    return suggestion
 
 
 # TO BE IMPLEMENTED AS AN EXERCISE  
-def accuse(self, suspect, weapon, room):
+def accuse(accuser,card1,card2,card3,isCorrect):
     """
     This function makes an accusation of the murderer, weapon and location.
     If the accusation is incorrect, the player loses the game.
     """
-    if (suspect == self.murderer) and (weapon == self.murder_weapon) and (room == self.murder_room):
-        return True
+    clauses = []
+    if isCorrect:
+        clauses.append([getPairNumFromNames(accuser, card1)])
+        clauses.append([getPairNumFromNames(accuser, card2)])
+        clauses.append([getPairNumFromNames(accuser, card3)])
     else:
-        return False
+        clauses.append([-getPairNumFromNames(accuser, card1)])
+        clauses.append([-getPairNumFromNames(accuser, card2)])
+        clauses.append([-getPairNumFromNames(accuser, card3)])
+    return clauses
 
 
 def query(player,card,clauses):
